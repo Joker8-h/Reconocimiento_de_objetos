@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 11
+names: ['colombia', 'conduciones', 'escudo de colombia', 'fechaexpedicion', 'fechanacimiento', 'foto', 'ministerio de transporte', 'nombre', 'numerolic', 'tarjeta conduccion', 'titulo licencia']
+
+roboflow:
+  workspace: tarjetadeconducir
+  project: my-first-project-gjlmd
+  version: 4
+  license: Private
+  url: https://app.roboflow.com/tarjetadeconducir/my-first-project-gjlmd/4

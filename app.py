@@ -5,7 +5,13 @@ from ultralytics import YOLO
 from PIL import Image, ImageDraw, ImageFont
 import io, base64, os
 
+import easyocr
+import numpy as np
+
 app = FastAPI()
+
+# Inicializar EasyOCR (Español e Inglés)
+reader = easyocr.Reader(['es', 'en'])
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,19 +21,23 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "best.pt")
+MODEL_PATH = os.path.join(BASE_DIR, "runs/detect/train/weights/best.pt")
 
 model = YOLO(MODEL_PATH)
 
-# Elementos requeridos
-REQUIRED = ["lab_coat", "stethoscope"]
-
+# Elementos requeridos en la licencia
+REQUIRED_ITEMS = [
+    "colombia", "escudo de colombia", "fechaexpedicion", "fechanacimiento",
+    "foto", "ministerio de transporte", "nombre", "numerolic",
+    "tarjeta conduccion", "titulo licencia"
+]
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     img_bytes = await file.read()
-    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    draw = ImageDraw.Draw(img)
+    img_pil = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    img_np = np.array(img_pil)
+    draw = ImageDraw.Draw(img_pil)
 
     # Fuente para texto
     try:
@@ -35,35 +45,43 @@ async def predict(file: UploadFile = File(...)):
     except:
         font = ImageFont.load_default()
 
-    results = model.predict(img, conf=0.25)
+    results = model.predict(img_pil, conf=0.25)
     boxes = results[0].boxes
 
     detected = []
+    extracted_data = {}
 
-    # --- DIBUJAR DETECTADOS (VERDE) ---
+    # --- DIBUJAR DETECTADOS (VERDE) Y EXTRAER TEXTO ---
     for box in boxes:
         cls_id = int(box.cls)
         label = model.names[cls_id]
         detected.append(label)
 
-        x1, y1, x2, y2 = box.xyxy[0]
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+        # Recortar área para OCR si es un campo de interés
+        if label in ["nombre", "numerolic"]:
+            # Pequeño margen para mejor lectura
+            crop = img_np[max(0, y1-5):min(img_np.shape[0], y2+5), max(0, x1-5):min(img_np.shape[1], x2+5)]
+            ocr_result = reader.readtext(crop, detail=0)
+            if ocr_result:
+                extracted_data[label] = " ".join(ocr_result)
 
         # cuadro verde
         draw.rectangle([x1, y1, x2, y2], outline="lime", width=4)
-        draw.text((x1, y1 - 20), label, fill="lime", font=font)
+        draw.text((x1, y1 - 20), f"{label}: {extracted_data.get(label, '')}", fill="lime", font=font)
 
     # Elementos faltantes
-    missing = [x for x in REQUIRED if x not in detected]
+    missing = [x for x in REQUIRED_ITEMS if x not in detected]
 
     # --- DIBUJAR FALTANTES (ROJO) ---
     if missing:
-        width, height = img.size
+        width, height = img_pil.size
         x_center = width // 2 - 150
         y_center = height // 2 - 150
 
         y_offset = 0
         for item in missing:
-            # Caja roja centrada (simulada)
             draw.rectangle(
                 [x_center, y_center + y_offset, x_center + 300, y_center + 50 + y_offset],
                 outline="red",
@@ -79,14 +97,15 @@ async def predict(file: UploadFile = File(...)):
 
     # Convertir a base64
     buffer = io.BytesIO()
-    img.save(buffer, format="JPEG")
+    img_pil.save(buffer, format="JPEG")
     img_base64 = base64.b64encode(buffer.getvalue()).decode()
 
     return JSONResponse({
         "detected_items": detected,
         "missing_items": missing,
         "is_fully_equipped": len(missing) == 0,
-        "message": "🟢 Completo" if not missing else "🔴 Faltan elementos",
+        "data": extracted_data,
+        "message": "🟢 Licencia Válida" if not missing else "🔴 Licencia Sospechosa",
         "image_base64": img_base64
     })
 # --- Endpoint rápido para video frame ---

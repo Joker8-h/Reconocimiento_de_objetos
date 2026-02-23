@@ -1,6 +1,0 @@
-train: ../yolo_project/dataset/images/train
-val: ../yolo_project/dataset/images/val
-
-nc: 2
-names: ['lab_coat', 'stethoscope']
-

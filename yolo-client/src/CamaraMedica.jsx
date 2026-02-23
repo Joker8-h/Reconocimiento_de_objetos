@@ -18,7 +18,8 @@ function CamaraMedica() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // cámara trasera si es celular
+        video: true, // En laptop usamos frontal
+        audio: false,
       });
 
       videoRef.current.srcObject = stream;
@@ -38,11 +39,12 @@ function CamaraMedica() {
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext("2d");
+
+    // Captura normal (NO afecta el transform visual)
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const dataURL = canvas.toDataURL("image/jpeg");
-
-    setPreview(dataURL); // mostrar foto en pantalla
+    setPreview(dataURL);
   };
 
   // 🔹 Enviar al backend
@@ -53,7 +55,6 @@ function CamaraMedica() {
     setResult(null);
 
     try {
-      // Convertir base64 → archivo tipo Blob
       const blob = await fetch(preview).then((res) => res.blob());
       const file = new File([blob], "foto.jpg", { type: "image/jpeg" });
 
@@ -79,13 +80,17 @@ function CamaraMedica() {
       {/* Cámara */}
       <video
         ref={videoRef}
+        autoPlay
+        playsInline
+        muted
         style={{
           width: "100%",
           maxWidth: "400px",
           borderRadius: "10px",
           border: "3px solid #666",
+          transform: "scaleX(-1)" // 👈 Corrige efecto espejo en laptop
         }}
-      ></video>
+      />
 
       {/* Botón para tomar foto */}
       <button
@@ -96,13 +101,15 @@ function CamaraMedica() {
           background: "#007bff",
           color: "white",
           borderRadius: "8px",
+          border: "none",
+          cursor: "pointer"
         }}
       >
         📸 Tomar foto
       </button>
 
-      {/* Canvas donde se captura la foto */}
-      <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
+      {/* Canvas oculto */}
+      <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {/* Vista previa */}
       {preview && (
@@ -110,12 +117,17 @@ function CamaraMedica() {
           <h3>📷 Foto tomada</h3>
           <img
             src={preview}
-            style={{ width: "300px", borderRadius: 10, border: "2px solid #ddd" }}
+            alt="preview"
+            style={{
+              width: "300px",
+              borderRadius: 10,
+              border: "2px solid #ddd"
+            }}
           />
         </div>
       )}
 
-      {/* Botón para analizar */}
+      {/* Botón analizar */}
       {preview && (
         <button
           onClick={analyzePhoto}
@@ -126,6 +138,8 @@ function CamaraMedica() {
             background: "#28a745",
             color: "white",
             borderRadius: "8px",
+            border: "none",
+            cursor: "pointer"
           }}
         >
           {loading ? "Analizando..." : "🔍 Analizar imagen"}
@@ -138,7 +152,12 @@ function CamaraMedica() {
           <h3>🔎 Imagen procesada</h3>
           <img
             src={outputImage}
-            style={{ width: "300px", borderRadius: 10, border: "2px solid #ddd" }}
+            alt="procesada"
+            style={{
+              width: "300px",
+              borderRadius: 10,
+              border: "2px solid #ddd"
+            }}
           />
         </div>
       )}
