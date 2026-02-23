@@ -16,10 +16,10 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-*.pt
-*.onnx
+# *.pt
+# *.onnx
 datasets/
-runs/
+# runs/
 .git/
 .gitignore
 .vscode/
