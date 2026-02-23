@@ -1,0 +1,10 @@
+[phases.setup]
+aptPkgs = [
+    "libgl1",
+    "libglib2.0-0",
+    "libxcb1",
+    "libx11-6",
+    "libsm6",
+    "libxrender1",
+    "libxext6"
+]
