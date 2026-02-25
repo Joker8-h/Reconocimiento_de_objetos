@@ -60,7 +60,7 @@ async def predict(file: UploadFile = File(...)):
         x1, y1, x2, y2 = map(int, box.xyxy[0])
 
         # Recortar área para OCR si es un campo de interés
-        if label in ["nombre", "numerolic"]:
+        if label in ["nombre", "numerolic", "fechaexpedicion"]:
             # Pequeño margen para mejor lectura
             crop = img_np[max(0, y1-5):min(img_np.shape[0], y2+5), max(0, x1-5):min(img_np.shape[1], x2+5)]
             ocr_result = reader.readtext(crop, detail=0)
